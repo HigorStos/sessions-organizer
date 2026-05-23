@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --background: #03050a;
+  --surface: #0a1220;
+  --surface-soft: #111b2d;
+  --foreground: #f4f7fb;
+  --muted: #9caec4;
+  --border: #22324a;
+  --accent: #f97316;
+  --accent-soft: #fbbf24;
+  --ok: #3eb877;
+  --warn: #f4bd54;
+  --danger: #df5a5a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --font-sans: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 18% 0%,
+      rgba(249, 115, 22, 0.28),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 78% 18%,
+      rgba(251, 191, 36, 0.16),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(34, 197, 94, 0.08),
+      transparent 36%
+    ),
+    linear-gradient(180deg, #020408 0%, #060b14 46%, #090f1a 100%);
+  color: var(--foreground);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}

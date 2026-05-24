@@ -147,7 +147,7 @@ export default function SupabaseApp() {
   const [statusMessage, setStatusMessage] = useState('');
 
   const isAdminRoute = pathname.startsWith('/admin');
-  const isAdmin = profile?.name.trim() === 'Higor';
+  const isAdmin = profile?.name.trim() === 'Admin';
   const visiblePayments = useMemo(() => {
     return filterByPeriod(
       filterByMethod(payments, filterMethod),
@@ -256,7 +256,7 @@ export default function SupabaseApp() {
     const loadedProfile = profileResult.data as ProfileRow;
     setProfile(loadedProfile);
 
-    const adminUser = loadedProfile.name.trim() === 'Higor';
+    const adminUser = loadedProfile.name.trim() === 'Admin';
     const paymentsQuery = supabase
       .from('payments')
       .select(
@@ -403,9 +403,24 @@ export default function SupabaseApp() {
           throw error;
         }
 
-        setStatusMessage(
-          'Cadastro criado. Se o e-mail precisar de confirmação, finalize e entre novamente.',
-        );
+        // Tentar logar automaticamente para evitar exigir confirmação de e-mail
+        const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          setStatusMessage(
+            'Conta criada. Caso seja necessário confirmar o e-mail, finalize a confirmação antes de entrar.',
+          );
+        } else {
+          setStatusMessage('Conta criada e logada. Carregando dados...');
+          try {
+            await loadContext(signInData.session ?? null);
+          } catch (_err) {
+            // fallback: rely on onAuthStateChange to update UI
+          }
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -553,7 +568,7 @@ export default function SupabaseApp() {
             </h1>
             <p className='mt-4 max-w-2xl text-sm leading-6 text-muted md:text-base'>
               Faça login, cadastre lançamentos e acompanhe tudo por período. O
-              usuário com o nome Higor entra como administrador e enxerga os
+              usuário com o nome Admin entra como administrador e enxerga os
               dados de todos.
             </p>
           </section>
@@ -601,7 +616,7 @@ export default function SupabaseApp() {
                         name: event.target.value,
                       }))
                     }
-                    placeholder='Ex.: Higor'
+                    placeholder='Ex.: Admin'
                   />
                 </div>
               ) : null}

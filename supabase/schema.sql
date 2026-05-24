@@ -84,7 +84,7 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and btrim(name) = 'Higor'
+      and btrim(name) = 'Admin'
   );
 $$;
 

@@ -162,6 +162,28 @@ export default function SupabaseApp() {
     [visiblePayments],
   );
 
+  // Metrics for specific users (Higor and Juka) and admin-derived cards
+  const higorProfile = profiles.find((p) => p.name.trim().toLowerCase() === 'higor');
+  const jukaProfile = profiles.find((p) => p.name.trim().toLowerCase() === 'juka');
+
+  const higorPayments = useMemo(
+    () => visiblePayments.filter((p) => p.userId === higorProfile?.id),
+    [visiblePayments, higorProfile?.id],
+  );
+
+  const jukaPayments = useMemo(
+    () => visiblePayments.filter((p) => p.userId === jukaProfile?.id),
+    [visiblePayments, jukaProfile?.id],
+  );
+
+  const higorMetrics = useMemo(() => getDashboardMetrics(higorPayments), [higorPayments]);
+  const jukaMetrics = useMemo(() => getDashboardMetrics(jukaPayments), [jukaPayments]);
+
+  const faturamentoTotalCustom = higorMetrics.totalAmount - jukaMetrics.totalAmount;
+  const sessoesPorDiaHigor = higorMetrics.avgDailySessions;
+  const sessoesTotaisHigor = higorMetrics.totalSessions;
+  const lancamentosTodos = visiblePayments.length;
+
   const computedTotalNumber = useMemo(() => {
     const unitPrice = Number((paymentDraft.unitPriceBRL || '').toString().replace(',', '.'));
     const sessions = Math.max(0, Math.round(Number(paymentDraft.sessions) || 0));
@@ -170,28 +192,13 @@ export default function SupabaseApp() {
   }, [paymentDraft.unitPriceBRL, paymentDraft.sessions]);
 
   const userSummaries = useMemo(() => {
-    if (!isAdmin) {
-      return [] as Array<{
-        id: string;
-        name: string;
-        amount: number;
-        sessions: number;
-        count: number;
-      }>;
-    }
+    if (!isAdmin) return [] as Array<{ id: string; name: string; amount: number; sessions: number; count: number }>;
 
-    const summaryMap = new Map<
-      string,
-      {
-        id: string;
-        name: string;
-        amount: number;
-        sessions: number;
-        count: number;
-      }
-    >();
+    const summaryMap = new Map<string, { id: string; name: string; amount: number; sessions: number; count: number }>();
 
     for (const profileRow of profiles) {
+      // Exclude the admin profile from the user summary
+      if (profileRow.name.trim().toLowerCase() === 'admin') continue;
       summaryMap.set(profileRow.id, {
         id: profileRow.id,
         name: profileRow.name,
@@ -771,24 +778,24 @@ export default function SupabaseApp() {
 
       <section className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
         <StatCard
-          label='Faturamento total'
-          value={brl(metrics.totalAmount)}
-          hint='Somatório do período filtrado.'
+          label='Faturamento total (Higor - Juka)'
+          value={brl(faturamentoTotalCustom)}
+          hint='Diferença entre o faturamento de Higor e Juka no recorte.'
         />
         <StatCard
-          label='Sessões totais'
-          value={String(metrics.totalSessions)}
-          hint='Quantidade de sessões no período.'
+          label='Sessões por dia (Higor)'
+          value={String(Number(sessoesPorDiaHigor).toFixed(2))}
+          hint='Média diária de sessões para Higor no recorte.'
         />
         <StatCard
-          label='Lançamentos'
-          value={String(metrics.totalCount)}
+          label='Sessões totais (Higor)'
+          value={String(sessoesTotaisHigor)}
+          hint='Total de sessões de Higor no recorte.'
+        />
+        <StatCard
+          label='Lançamentos (todos)'
+          value={String(lancamentosTodos)}
           hint='Número de registros exibidos no filtro.'
-        />
-        <StatCard
-          label='Ticket médio'
-          value={brl(metrics.avgTicket)}
-          hint='Média por lançamento no recorte atual.'
         />
       </section>
 

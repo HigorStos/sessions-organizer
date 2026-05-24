@@ -780,22 +780,18 @@ export default function SupabaseApp() {
         <StatCard
           label='Faturamento total (Higor - Juka)'
           value={brl(faturamentoTotalCustom)}
-          hint='Diferença entre o faturamento de Higor e Juka no recorte.'
         />
         <StatCard
           label='Sessões por dia (Higor)'
           value={String(Number(sessoesPorDiaHigor).toFixed(2))}
-          hint='Média diária de sessões para Higor no recorte.'
         />
         <StatCard
           label='Sessões totais (Higor)'
           value={String(sessoesTotaisHigor)}
-          hint='Total de sessões de Higor no recorte.'
         />
         <StatCard
           label='Lançamentos (todos)'
           value={String(lancamentosTodos)}
-          hint='Número de registros exibidos no filtro.'
         />
       </section>
 
@@ -814,73 +810,54 @@ export default function SupabaseApp() {
                 </p>
               </div>
 
-              <div className='flex flex-col gap-2 rounded-2xl border border-border/70 bg-surface-soft px-3 py-3 text-xs text-muted md:min-w-80'>
-                <div className='grid gap-2 sm:grid-cols-3'>
-                  <div>
-                    <label className='mb-1 block text-[10px] uppercase tracking-[0.18em]'>
-                      De
-                    </label>
-                    <input
-                      type='date'
-                      className='w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent'
-                      value={filterStartDate}
-                      onChange={(event) =>
-                        setFilterStartDate(event.target.value)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className='mb-1 block text-[10px] uppercase tracking-[0.18em]'>
-                      Até
-                    </label>
-                    <input
-                      type='date'
-                      className='w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent'
-                      value={filterEndDate}
-                      onChange={(event) => setFilterEndDate(event.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className='mb-1 block text-[10px] uppercase tracking-[0.18em]'>
-                      Método
-                    </label>
-                    <select
-                      className='w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-accent'
-                      value={filterMethod}
-                      onChange={(event) =>
-                        setFilterMethod(
-                          event.target.value as PaymentMethod | 'ALL',
-                        )
-                      }
-                    >
-                      <option value='ALL'>Todos</option>
-                      <option value='PIX'>PIX</option>
-                      <option value='BINANCE'>Binance</option>
-                    </select>
-                  </div>
+              <div className='flex items-center gap-2 rounded-md border border-border/30 bg-transparent px-2 py-1 text-xs text-muted md:min-w-80'>
+                <div className='flex items-center gap-2'>
+                  <label className='sr-only'>De</label>
+                  <input
+                    type='date'
+                    className='h-8 rounded-md border border-border bg-transparent px-2 text-sm outline-none transition focus:border-accent'
+                    value={filterStartDate}
+                    onChange={(event) => setFilterStartDate(event.target.value)}
+                  />
+
+                  <label className='sr-only'>Até</label>
+                  <input
+                    type='date'
+                    className='h-8 rounded-md border border-border bg-transparent px-2 text-sm outline-none transition focus:border-accent'
+                    value={filterEndDate}
+                    onChange={(event) => setFilterEndDate(event.target.value)}
+                  />
+
+                  <label className='sr-only'>Método</label>
+                  <select
+                    className='h-8 rounded-md border border-border bg-transparent px-2 text-sm outline-none transition focus:border-accent'
+                    value={filterMethod}
+                    onChange={(event) =>
+                      setFilterMethod(event.target.value as PaymentMethod | 'ALL')
+                    }
+                  >
+                    <option value='ALL'>Todos</option>
+                    <option value='PIX'>PIX</option>
+                    <option value='BINANCE'>Binance</option>
+                  </select>
                 </div>
-                <div className='flex flex-wrap items-center justify-between gap-2'>
-                  <div>
-                    Mostrando{' '}
-                    <span className='font-semibold text-foreground'>
-                      {visiblePayments.length}
-                    </span>{' '}
-                    de{' '}
-                    <span className='font-semibold text-foreground'>
-                      {payments.length}
-                    </span>{' '}
-                    lançamentos
+
+                <div className='ml-auto flex items-center gap-3'>
+                  <div className='text-sm text-muted'>
+                    <span className='font-semibold text-foreground'>{visiblePayments.length}</span>
+                    <span className='mx-1'>/</span>
+                    <span className='text-muted'>{payments.length}</span>
                   </div>
                   <button
                     type='button'
-                    className='rounded-xl border border-border/70 px-3 py-1.5 text-[11px] text-foreground transition hover:bg-white/5'
+                    className='text-sm text-foreground/80 hover:underline px-2 py-1'
                     onClick={() => {
                       setFilterStartDate('');
                       setFilterEndDate('');
                       setFilterMethod('ALL');
                     }}
                   >
-                    Limpar filtro
+                    Limpar
                   </button>
                 </div>
               </div>

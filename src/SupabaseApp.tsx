@@ -1,27 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import {
-  filterByMethod,
-  filterByPeriod,
-  getDashboardMetrics,
-} from './lib/payment-metrics';
-import { brl } from './lib/payment-storage';
-import { supabase } from './lib/supabase';
-import type { PaymentMethod, PaymentRecord } from './types/payment';
+        if (error) {
+          throw error;
+        }
 
-type ProfileRow = {
-  id: string;
-  name: string;
-  created_at: string;
-};
-
-type PaymentRow = PaymentRecord & {
-  userId: string;
-  userName: string;
-};
-
-type PaymentDbRow = {
-  id: string;
+        setStatusMessage(
+          'Cadastro criado. Se o e-mail precisar de confirmação, finalize e entre novamente.',
+        );
   user_id: string;
   date: string;
   method: PaymentMethod;
@@ -451,25 +436,9 @@ export default function SupabaseApp() {
           throw error;
         }
 
-        // Tentar logar automaticamente para evitar exigir confirmação de e-mail
-        const { error: signInError, data: signInData } =
-          await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-        if (signInError) {
-          setStatusMessage(
-            'Conta criada. Caso seja necessário confirmar o e-mail, finalize a confirmação antes de entrar.',
-          );
-        } else {
-          setStatusMessage('Conta criada e logada. Carregando dados...');
-          try {
-            await loadContext(signInData.session ?? null);
-          } catch (_err) {
-            // fallback: rely on onAuthStateChange to update UI
-          }
-        }
+        setStatusMessage(
+          'Cadastro criado. Se o e-mail precisar de confirmação, finalize e entre novamente.',
+        );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

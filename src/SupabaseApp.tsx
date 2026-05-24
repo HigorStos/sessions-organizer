@@ -147,7 +147,7 @@ export default function SupabaseApp() {
   const [statusMessage, setStatusMessage] = useState('');
 
   const isAdminRoute = pathname.startsWith('/admin');
-  const isAdmin = profile?.name.trim() === 'Admin';
+  const isAdmin = profile?.name.trim().toLowerCase() === 'admin';
   const visiblePayments = useMemo(() => {
     return filterByPeriod(
       filterByMethod(payments, filterMethod),
@@ -281,7 +281,7 @@ export default function SupabaseApp() {
 
     setProfile(loadedProfile);
 
-    const adminUser = loadedProfile.name.trim() === 'Admin';
+    const adminUser = loadedProfile.name.trim().toLowerCase() === 'admin';
     const paymentsQuery = supabase
       .from('payments')
       .select(
@@ -455,6 +455,11 @@ export default function SupabaseApp() {
   }
 
   function startEditingPayment(record: PaymentRow) {
+    if (isAdmin) {
+      setPaymentError('Administradores não podem editar lançamentos.');
+      return;
+    }
+
     setEditingPaymentId(record.id);
     setPaymentDraft({
       date: record.date,
@@ -470,6 +475,11 @@ export default function SupabaseApp() {
   async function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPaymentError('');
+
+    if (isAdmin) {
+      setPaymentError('Administradores não podem incluir ou editar lançamentos.');
+      return;
+    }
 
     if (!authUser) {
       setPaymentError('Faça login para continuar.');
@@ -537,6 +547,11 @@ export default function SupabaseApp() {
   }
 
   async function removePayment(id: string) {
+    if (isAdmin) {
+      setPaymentError('Administradores não podem excluir lançamentos.');
+      return;
+    }
+
     const { error } = await supabase.from('payments').delete().eq('id', id);
 
     if (error) {
@@ -884,22 +899,26 @@ export default function SupabaseApp() {
                           {formatDateTime(payment.createdAt)}
                         </td>
                         <td className='py-3'>
-                          <div className='flex flex-wrap gap-2'>
-                            <button
-                              type='button'
-                              className='rounded-xl border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:bg-white/5'
-                              onClick={() => startEditingPayment(payment)}
-                            >
-                              Editar
-                            </button>
-                            <button
-                              type='button'
-                              className='rounded-xl border border-danger/30 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10'
-                              onClick={() => void removePayment(payment.id)}
-                            >
-                              Excluir
-                            </button>
-                          </div>
+                          {!isAdmin ? (
+                            <div className='flex flex-wrap gap-2'>
+                              <button
+                                type='button'
+                                className='rounded-xl border border-border/70 px-3 py-1.5 text-xs text-foreground transition hover:bg-white/5'
+                                onClick={() => startEditingPayment(payment)}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type='button'
+                                className='rounded-xl border border-danger/30 px-3 py-1.5 text-xs text-danger transition hover:bg-danger/10'
+                                onClick={() => void removePayment(payment.id)}
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          ) : (
+                            <span className='text-sm text-muted'>Somente leitura</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -939,7 +958,8 @@ export default function SupabaseApp() {
           ) : null}
         </div>
 
-        <aside className='h-fit rounded-3xl border border-border/70 bg-white/5 p-5 shadow-[0_18px_70px_rgba(0,0,0,0.16)] backdrop-blur-sm'>
+          {!isAdmin ? (
+            <aside className='h-fit rounded-3xl border border-border/70 bg-white/5 p-5 shadow-[0_18px_70px_rgba(0,0,0,0.16)] backdrop-blur-sm'>
           <h2 className='text-xl font-medium text-foreground'>
             {editingPaymentId ? 'Editar lançamento' : 'Novo lançamento'}
           </h2>
@@ -1101,7 +1121,8 @@ export default function SupabaseApp() {
               </button>
             </div>
           </form>
-        </aside>
+            </aside>
+          ) : null}
       </section>
     </div>
   );

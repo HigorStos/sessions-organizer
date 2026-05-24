@@ -37,6 +37,7 @@ type PaymentDraftState = {
   date: string;
   method: PaymentMethod;
   amountBRL: string;
+  unitPriceBRL: string;
   sessions: string;
   notes: string;
   userId: string;
@@ -64,6 +65,7 @@ function getInitialPaymentDraft(userId: string): PaymentDraftState {
     date: getTodayDate(),
     method: 'PIX',
     amountBRL: '',
+    unitPriceBRL: '',
     sessions: '1',
     notes: '',
     userId,
@@ -159,6 +161,13 @@ export default function SupabaseApp() {
     () => getDashboardMetrics(visiblePayments),
     [visiblePayments],
   );
+
+  const computedTotalNumber = useMemo(() => {
+    const unitPrice = Number((paymentDraft.unitPriceBRL || '').toString().replace(',', '.'));
+    const sessions = Math.max(0, Math.round(Number(paymentDraft.sessions) || 0));
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0 || sessions <= 0) return 0;
+    return Number((unitPrice * sessions).toFixed(2));
+  }, [paymentDraft.unitPriceBRL, paymentDraft.sessions]);
 
   const userSummaries = useMemo(() => {
     if (!isAdmin) {
@@ -465,6 +474,7 @@ export default function SupabaseApp() {
       date: record.date,
       method: record.method,
       amountBRL: String(record.amountBRL),
+      unitPriceBRL: String(record.sessions ? (record.amountBRL / record.sessions) : record.amountBRL),
       sessions: String(record.sessions),
       notes: record.notes,
       userId: record.userId,
@@ -486,16 +496,22 @@ export default function SupabaseApp() {
       return;
     }
 
-    const amountBRL = Number(paymentDraft.amountBRL);
+    const unitPrice = Number(paymentDraft.unitPriceBRL.replace(',', '.'));
     const sessions = Math.round(Number(paymentDraft.sessions));
+    const amountBRL = Number((unitPrice * sessions).toFixed(2));
 
     if (!paymentDraft.date) {
       setPaymentError('Informe a data.');
       return;
     }
 
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      setPaymentError('Informe um valor válido por sessão.');
+      return;
+    }
+
     if (!Number.isFinite(amountBRL) || amountBRL <= 0) {
-      setPaymentError('Informe um valor válido.');
+      setPaymentError('Valor total inválido.');
       return;
     }
 
@@ -510,7 +526,7 @@ export default function SupabaseApp() {
       user_id: userId,
       date: paymentDraft.date,
       method: paymentDraft.method,
-      amount_brl: Number(amountBRL.toFixed(2)),
+      amount_brl: amountBRL,
       sessions,
       notes: paymentDraft.notes.trim(),
     };
@@ -1054,26 +1070,37 @@ export default function SupabaseApp() {
               </div>
             </div>
 
-            <div>
-              <label className='mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted'>
-                Valor total
-              </label>
-              <input
-                required
-                min='0.01'
-                step='0.01'
-                type='number'
-                inputMode='decimal'
-                className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
-                value={paymentDraft.amountBRL}
-                onChange={(event) =>
-                  setPaymentDraft((prev) => ({
-                    ...prev,
-                    amountBRL: event.target.value,
-                  }))
-                }
-                placeholder='Ex.: 1500,00'
-              />
+            <div className='grid gap-4'>
+              <div>
+                <label className='mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted'>
+                  Valor por sessão
+                </label>
+                <input
+                  required
+                  min='0.01'
+                  step='0.01'
+                  type='number'
+                  inputMode='decimal'
+                  className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
+                  value={paymentDraft.unitPriceBRL}
+                  onChange={(event) =>
+                    setPaymentDraft((prev) => ({
+                      ...prev,
+                      unitPriceBRL: event.target.value,
+                    }))
+                  }
+                  placeholder='Ex.: 150.00'
+                />
+              </div>
+
+              <div>
+                <label className='mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted'>
+                  Valor total
+                </label>
+                <div className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm font-mono text-foreground'>
+                  {computedTotalNumber > 0 ? brl(computedTotalNumber) : 'R$ 0,00'}
+                </div>
+              </div>
             </div>
 
             <div>

@@ -1,12 +1,27 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-        if (error) {
-          throw error;
-        }
+import {
+  filterByMethod,
+  filterByPeriod,
+  getDashboardMetrics,
+} from './lib/payment-metrics';
+import { brl } from './lib/payment-storage';
+import { supabase } from './lib/supabase';
+import type { PaymentMethod, PaymentRecord } from './types/payment';
 
-        setStatusMessage(
-          'Cadastro criado. Se o e-mail precisar de confirmação, finalize e entre novamente.',
-        );
+type ProfileRow = {
+  id: string;
+  name: string;
+  created_at: string;
+};
+
+type PaymentRow = PaymentRecord & {
+  userId: string;
+  userName: string;
+};
+
+type PaymentDbRow = {
+  id: string;
   user_id: string;
   date: string;
   method: PaymentMethod;
@@ -228,6 +243,7 @@ export default function SupabaseApp() {
 
     setAuthUser(session.user);
 
+    // Buscar o profile existente (se houver). usamos maybeSingle() para não falhar quando não houver linhas.
     const profileResult = await supabase
       .from('profiles')
       .select('id, name, created_at')
@@ -263,30 +279,6 @@ export default function SupabaseApp() {
       loadedProfile = profileResult.data as ProfileRow;
     }
 
-    setProfile(loadedProfile);
-        'Admin';
-
-      const upsertRes = await supabase.from('profiles').upsert({
-        id: session.user.id,
-        name: String(fallbackName),
-      });
-
-      if (upsertRes.error) {
-        throw upsertRes.error;
-      }
-
-      profileResult = await supabase
-        .from('profiles')
-        .select('id, name, created_at')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profileResult.error || !profileResult.data) {
-        throw profileResult.error ?? new Error('Perfil não encontrado.');
-      }
-    }
-
-    const loadedProfile = profileResult.data as ProfileRow;
     setProfile(loadedProfile);
 
     const adminUser = loadedProfile.name.trim() === 'Admin';

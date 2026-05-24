@@ -247,10 +247,58 @@ export default function SupabaseApp() {
       .from('profiles')
       .select('id, name, created_at')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileResult.error || !profileResult.data) {
-      throw profileResult.error ?? new Error('Perfil não encontrado.');
+    if (profileResult.error) {
+      throw profileResult.error;
+    }
+
+    let loadedProfile: ProfileRow;
+
+    if (!profileResult.data) {
+      // Se não existe um profile criado (trigger do auth pode não ter ocorrido ainda),
+      // criamos um profile básico no cliente com o name do metadata ou parte do e-mail.
+      const inferredName =
+        (session.user.user_metadata as any)?.name?.trim() ||
+        session.user.email?.split('@')[0] ||
+        'Usuário';
+
+      const insertRes = await supabase
+        .from('profiles')
+        .insert({ id: session.user.id, name: inferredName })
+        .select()
+        .maybeSingle();
+
+      if (insertRes.error) {
+        throw insertRes.error;
+      }
+
+      loadedProfile = insertRes.data as ProfileRow;
+    } else {
+      loadedProfile = profileResult.data as ProfileRow;
+    }
+
+    setProfile(loadedProfile);
+        'Admin';
+
+      const upsertRes = await supabase.from('profiles').upsert({
+        id: session.user.id,
+        name: String(fallbackName),
+      });
+
+      if (upsertRes.error) {
+        throw upsertRes.error;
+      }
+
+      profileResult = await supabase
+        .from('profiles')
+        .select('id, name, created_at')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileResult.error || !profileResult.data) {
+        throw profileResult.error ?? new Error('Perfil não encontrado.');
+      }
     }
 
     const loadedProfile = profileResult.data as ProfileRow;
@@ -404,10 +452,11 @@ export default function SupabaseApp() {
         }
 
         // Tentar logar automaticamente para evitar exigir confirmação de e-mail
-        const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error: signInError, data: signInData } =
+          await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
 
         if (signInError) {
           setStatusMessage(

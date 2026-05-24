@@ -389,11 +389,13 @@ export default function SupabaseApp() {
     if (!authUser) {
       return;
     }
+    const lastUnit = getLastUnitPrice(authUser.id);
 
     if (isAdmin && profiles.length > 0) {
       setPaymentDraft((prev) => ({
         ...prev,
         userId: prev.userId || authUser.id || profiles[0].id,
+        unitPriceBRL: prev.unitPriceBRL || lastUnit || '',
       }));
       return;
     }
@@ -401,6 +403,7 @@ export default function SupabaseApp() {
     setPaymentDraft((prev) => ({
       ...prev,
       userId: authUser.id,
+      unitPriceBRL: prev.unitPriceBRL || lastUnit || '',
     }));
   }, [authUser, isAdmin, profiles]);
 
@@ -458,9 +461,24 @@ export default function SupabaseApp() {
   }
 
   function resetPaymentDraft(nextUserId?: string) {
-    setPaymentDraft(getInitialPaymentDraft(nextUserId ?? authUser?.id ?? ''));
+    const uid = nextUserId ?? authUser?.id ?? '';
+    const lastUnit = getLastUnitPrice(uid);
+    setPaymentDraft({ ...getInitialPaymentDraft(uid), unitPriceBRL: lastUnit ?? '' });
     setEditingPaymentId(null);
     setPaymentError('');
+  }
+
+  function getLastUnitPrice(userId?: string) {
+    if (!userId) return '';
+    const userPayments = payments
+      .filter((p) => p.userId === userId)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+    const last = userPayments[0];
+    if (!last) return '';
+    if (!last.sessions || last.sessions <= 0) return String(last.amountBRL);
+    const unit = last.amountBRL / last.sessions;
+    return String(Number(unit.toFixed(2)));
   }
 
   function startEditingPayment(record: PaymentRow) {
@@ -867,7 +885,6 @@ export default function SupabaseApp() {
                   <tr className='border-b border-border/70 text-[11px] uppercase tracking-[0.2em] text-muted'>
                     {isAdmin ? <th className='py-3 pr-4'>Usuário</th> : null}
                     <th className='py-3 pr-4'>Data</th>
-                    <th className='py-3 pr-4'>Método</th>
                     <th className='py-3 pr-4'>Sessões</th>
                     <th className='py-3 pr-4'>Valor</th>
                     <th className='py-3 pr-4'>Observação</th>
@@ -879,7 +896,7 @@ export default function SupabaseApp() {
                   {visiblePayments.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={isAdmin ? 8 : 7}
+                        colSpan={isAdmin ? 7 : 6}
                         className='py-8 text-center text-muted'
                       >
                         Nenhum lançamento encontrado para o período filtrado.
@@ -899,9 +916,7 @@ export default function SupabaseApp() {
                         <td className='py-3 pr-4 text-foreground'>
                           {payment.date}
                         </td>
-                        <td className='py-3 pr-4 text-muted'>
-                          {methodLabels[payment.method]}
-                        </td>
+                        
                         <td className='py-3 pr-4 text-foreground'>
                           {payment.sessions}
                         </td>
@@ -1028,26 +1043,7 @@ export default function SupabaseApp() {
               />
             </div>
 
-            <div className='grid gap-4 md:grid-cols-2'>
-              <div>
-                <label className='mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted'>
-                  Método
-                </label>
-                <select
-                  className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
-                  value={paymentDraft.method}
-                  onChange={(event) =>
-                    setPaymentDraft((prev) => ({
-                      ...prev,
-                      method: event.target.value as PaymentMethod,
-                    }))
-                  }
-                >
-                  <option value='PIX'>PIX</option>
-                  <option value='BINANCE'>Binance</option>
-                </select>
-              </div>
-
+            <div className='grid gap-4'>
               <div>
                 <label className='mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted'>
                   Sessões
@@ -1075,22 +1071,35 @@ export default function SupabaseApp() {
                 <label className='mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted'>
                   Valor por sessão
                 </label>
-                <input
-                  required
-                  min='0.01'
-                  step='0.01'
-                  type='number'
-                  inputMode='decimal'
-                  className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
-                  value={paymentDraft.unitPriceBRL}
-                  onChange={(event) =>
-                    setPaymentDraft((prev) => ({
-                      ...prev,
-                      unitPriceBRL: event.target.value,
-                    }))
-                  }
-                  placeholder='Ex.: 150.00'
-                />
+                <div className='flex items-center'>
+                  <span className='inline-flex items-center rounded-l-2xl border border-border/70 bg-surface-soft px-3 py-3 text-sm text-muted'>R$</span>
+                  <input
+                    required
+                    min='0.01'
+                    step='0.01'
+                    type='text'
+                    inputMode='decimal'
+                    className='w-full rounded-r-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
+                    value={paymentDraft.unitPriceBRL}
+                    onChange={(event) =>
+                      setPaymentDraft((prev) => ({
+                        ...prev,
+                        unitPriceBRL: event.target.value,
+                      }))
+                    }
+                    onBlur={(event) => {
+                      const raw = event.target.value.toString().replace(',', '.').replace(/[^0-9.]/g, '');
+                      const n = Number(raw || 0);
+                      if (Number.isFinite(n) && n > 0) {
+                        setPaymentDraft((prev) => ({
+                          ...prev,
+                          unitPriceBRL: n.toFixed(2),
+                        }));
+                      }
+                    }}
+                    placeholder='Ex.: 150.00'
+                  />
+                </div>
               </div>
 
               <div>

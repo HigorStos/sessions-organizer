@@ -777,22 +777,33 @@ export default function SupabaseApp() {
       </header>
 
       <section className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-        <StatCard
-          label='Faturamento total (Higor - Juka)'
-          value={brl(faturamentoTotalCustom)}
-        />
-        <StatCard
-          label='Sessões por dia (Higor)'
-          value={String(Number(sessoesPorDiaHigor).toFixed(2))}
-        />
-        <StatCard
-          label='Sessões totais (Higor)'
-          value={String(sessoesTotaisHigor)}
-        />
-        <StatCard
-          label='Lançamentos (todos)'
-          value={String(lancamentosTodos)}
-        />
+        {isAdmin ? (
+          <>
+            <StatCard
+              label='Faturamento total (Higor - Juka)'
+              value={brl(faturamentoTotalCustom)}
+            />
+            <StatCard
+              label='Sessões por dia (Higor)'
+              value={String(Number(sessoesPorDiaHigor).toFixed(2))}
+            />
+            <StatCard
+              label='Sessões totais (Higor)'
+              value={String(sessoesTotaisHigor)}
+            />
+            <StatCard
+              label='Lançamentos (todos)'
+              value={String(lancamentosTodos)}
+            />
+          </>
+        ) : (
+          <>
+            <StatCard label='Faturamento total' value={brl(metrics.totalAmount)} />
+            <StatCard label='Lançamentos' value={String(metrics.totalCount)} />
+            <StatCard label='Sessões totais' value={String(metrics.totalSessions)} />
+            <StatCard label='Ticket médio' value={brl(metrics.avgTicket)} />
+          </>
+        )}
       </section>
 
       <section className='grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]'>

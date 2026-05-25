@@ -43,6 +43,12 @@ type PaymentDraftState = {
   userId: string;
 };
 
+type RecentAuthAccount = {
+  email: string;
+  name: string;
+  lastUsedAt: string;
+};
+
 const methodLabels: Record<PaymentMethod, string> = {
   PIX: 'PIX',
   BINANCE: 'Binance',
@@ -59,6 +65,60 @@ const initialAuthDraft = {
   email: '',
   password: '',
 };
+
+const RECENT_AUTH_ACCOUNTS_STORAGE_KEY = 'rkz.supabase.recent-auth-accounts.v1';
+
+function readRecentAuthAccounts(): RecentAuthAccount[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(RECENT_AUTH_ACCOUNTS_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((item): item is RecentAuthAccount => {
+        if (typeof item !== 'object' || item === null) {
+          return false;
+        }
+
+        const candidate = item as Partial<RecentAuthAccount>;
+
+        return (
+          typeof candidate.email === 'string' &&
+          typeof candidate.name === 'string' &&
+          typeof candidate.lastUsedAt === 'string'
+        );
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime(),
+      )
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
+function storeRecentAuthAccounts(accounts: RecentAuthAccount[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(
+    RECENT_AUTH_ACCOUNTS_STORAGE_KEY,
+    JSON.stringify(accounts.slice(0, 4)),
+  );
+}
 
 function getInitialPaymentDraft(userId: string): PaymentDraftState {
   return {
@@ -133,6 +193,9 @@ export default function SupabaseApp() {
   const [loading, setLoading] = useState(true);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [recentAuthAccounts, setRecentAuthAccounts] = useState<RecentAuthAccount[]>(
+    () => readRecentAuthAccounts(),
+  );
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [filterStartDate, setFilterStartDate] = useState('');
@@ -296,6 +359,21 @@ export default function SupabaseApp() {
     }
 
     setProfile(loadedProfile);
+    if (session.user.email) {
+      const nextRecentAccounts = [
+        {
+          email: session.user.email,
+          name: loadedProfile.name,
+          lastUsedAt: new Date().toISOString(),
+        },
+        ...recentAuthAccounts.filter(
+          (account) => account.email.toLowerCase() !== session.user.email?.toLowerCase(),
+        ),
+      ].slice(0, 4);
+
+      setRecentAuthAccounts(nextRecentAccounts);
+      storeRecentAuthAccounts(nextRecentAccounts);
+    }
 
     const adminUser = loadedProfile.name.trim().toLowerCase() === 'admin';
     const paymentsQuery = supabase
@@ -366,24 +444,39 @@ export default function SupabaseApp() {
 
     void bootstrap();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) {
         return;
       }
 
-      setLoading(true);
+      if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        return;
+      }
 
-      void loadContext(session)
-        .catch((error) => {
+      if (event === 'SIGNED_OUT') {
+        void loadContext(null).catch((error) => {
           setAuthError(
             error instanceof Error ? error.message : 'Erro ao carregar dados.',
           );
-        })
-        .finally(() => {
-          if (isMounted) {
-            setLoading(false);
-          }
         });
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        setLoading(true);
+
+        void loadContext(session)
+          .catch((error) => {
+            setAuthError(
+              error instanceof Error ? error.message : 'Erro ao carregar dados.',
+            );
+          })
+          .finally(() => {
+            if (isMounted) {
+              setLoading(false);
+            }
+          });
+      }
     });
 
     return () => {
@@ -613,6 +706,17 @@ export default function SupabaseApp() {
     setStatusMessage('');
   }
 
+  function selectRecentAuthAccount(account: RecentAuthAccount) {
+    setAuthMode('signin');
+    setAuthError('');
+    setStatusMessage('');
+    setAuthDraft((prev) => ({
+      ...prev,
+      email: account.email,
+      password: '',
+    }));
+  }
+
   if (loading) {
     return (
       <div className='flex min-h-screen items-center justify-center px-4 text-muted'>
@@ -694,6 +798,7 @@ export default function SupabaseApp() {
                 <input
                   required
                   type='email'
+                  autoComplete='username'
                   className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
                   value={authDraft.email}
                   onChange={(event) =>
@@ -713,6 +818,7 @@ export default function SupabaseApp() {
                 <input
                   required
                   type='password'
+                  autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
                   className='w-full rounded-2xl border border-border bg-surface-soft px-3 py-3 text-sm outline-none transition focus:border-accent'
                   value={authDraft.password}
                   onChange={(event) =>
@@ -724,6 +830,30 @@ export default function SupabaseApp() {
                   placeholder='••••••••'
                 />
               </div>
+
+              {authMode === 'signin' && recentAuthAccounts.length > 0 ? (
+                <div className='rounded-3xl border border-border/70 bg-surface-soft/70 p-4'>
+                  <p className='text-[11px] uppercase tracking-[0.2em] text-muted'>
+                    Contas recentes
+                  </p>
+                  <div className='mt-3 flex flex-wrap gap-2'>
+                    {recentAuthAccounts.map((account) => (
+                      <button
+                        key={account.email}
+                        type='button'
+                        className='rounded-full border border-border/70 bg-white/5 px-3 py-2 text-left text-xs text-foreground transition hover:border-accent hover:bg-white/10'
+                        onClick={() => selectRecentAuthAccount(account)}
+                      >
+                        <span className='block font-medium'>{account.name || account.email}</span>
+                        <span className='block text-[11px] text-muted'>{account.email}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className='mt-3 text-xs leading-5 text-muted'>
+                    Clique para preencher o e-mail. Se o navegador já salvou sua senha, o login fica em um passo só.
+                  </p>
+                </div>
+              ) : null}
 
               {authError ? (
                 <p className='text-sm text-danger'>{authError}</p>

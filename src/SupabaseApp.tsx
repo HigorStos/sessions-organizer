@@ -103,21 +103,31 @@ function readRecentAuthAccounts(): RecentAuthAccount[] {
         (a, b) =>
           new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime(),
       )
-      .slice(0, 4);
+      ;
   } catch {
     return [];
   }
 }
 
-function storeRecentAuthAccounts(accounts: RecentAuthAccount[]): void {
+function upsertRecentAuthAccount(account: RecentAuthAccount): RecentAuthAccount[] {
   if (typeof window === 'undefined') {
-    return;
+    return [account];
   }
+
+  const existingAccounts = readRecentAuthAccounts();
+  const nextAccounts = [
+    account,
+    ...existingAccounts.filter(
+      (existing) => existing.email.toLowerCase() !== account.email.toLowerCase(),
+    ),
+  ].sort((a, b) => new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime());
 
   window.localStorage.setItem(
     RECENT_AUTH_ACCOUNTS_STORAGE_KEY,
-    JSON.stringify(accounts.slice(0, 4)),
+    JSON.stringify(nextAccounts),
   );
+
+  return nextAccounts;
 }
 
 function getInitialPaymentDraft(userId: string): PaymentDraftState {
@@ -360,19 +370,12 @@ export default function SupabaseApp() {
 
     setProfile(loadedProfile);
     if (session.user.email) {
-      const nextRecentAccounts = [
-        {
-          email: session.user.email,
-          name: loadedProfile.name,
-          lastUsedAt: new Date().toISOString(),
-        },
-        ...recentAuthAccounts.filter(
-          (account) => account.email.toLowerCase() !== session.user.email?.toLowerCase(),
-        ),
-      ].slice(0, 4);
-
+      const nextRecentAccounts = upsertRecentAuthAccount({
+        email: session.user.email,
+        name: loadedProfile.name,
+        lastUsedAt: new Date().toISOString(),
+      });
       setRecentAuthAccounts(nextRecentAccounts);
-      storeRecentAuthAccounts(nextRecentAccounts);
     }
 
     const adminUser = loadedProfile.name.trim().toLowerCase() === 'admin';

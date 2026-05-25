@@ -463,19 +463,12 @@ export default function SupabaseApp() {
       }
 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        setLoading(true);
-
         void loadContext(session)
           .catch((error) => {
             setAuthError(
               error instanceof Error ? error.message : 'Erro ao carregar dados.',
             );
           })
-          .finally(() => {
-            if (isMounted) {
-              setLoading(false);
-            }
-          });
       }
     });
 

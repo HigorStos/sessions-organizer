@@ -1,4 +1,4 @@
-import type { PaymentMethod, PaymentRecord } from "@/types/payment";
+import type { PaymentMethod, PaymentRecord } from '@/types/payment';
 
 type MonthPoint = {
   label: string;
@@ -21,16 +21,18 @@ export type DashboardMetrics = {
   byMonth: MonthPoint[];
 };
 
-const monthFmt = new Intl.DateTimeFormat("pt-BR", {
-  month: "short",
-  year: "2-digit",
+const monthFmt = new Intl.DateTimeFormat('pt-BR', {
+  month: 'short',
+  year: '2-digit',
 });
 
 function getMonthKey(value: Date): string {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function getDashboardMetrics(payments: PaymentRecord[]): DashboardMetrics {
+export function getDashboardMetrics(
+  payments: PaymentRecord[],
+): DashboardMetrics {
   const now = new Date();
   const currentMonth = getMonthKey(now);
 
@@ -84,7 +86,10 @@ export function getDashboardMetrics(payments: PaymentRecord[]): DashboardMetrics
   const totalCount = payments.length;
   const rangeDays =
     minDate && maxDate
-      ? Math.max(1, Math.floor((maxDate.getTime() - minDate.getTime()) / 86400000) + 1)
+      ? Math.max(
+          1,
+          Math.floor((maxDate.getTime() - minDate.getTime()) / 86400000) + 1,
+        )
       : 1;
   const avgDailyRevenue = totalAmount / rangeDays;
   const avgWeeklyRevenue = avgDailyRevenue * 7;
@@ -109,9 +114,9 @@ export function getDashboardMetrics(payments: PaymentRecord[]): DashboardMetrics
 
 export function filterByMethod(
   payments: PaymentRecord[],
-  method: PaymentMethod | "ALL",
+  method: PaymentMethod | 'ALL',
 ): PaymentRecord[] {
-  if (method === "ALL") {
+  if (method === 'ALL') {
     return payments;
   }
 

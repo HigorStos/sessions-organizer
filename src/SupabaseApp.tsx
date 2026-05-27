@@ -229,7 +229,7 @@ export default function SupabaseApp() {
       filterStartDate,
       filterEndDate,
     );
-  }, [payments, filterEndDate, filterMethod, filterStartDate]);
+    const [loading, setLoading] = useState(true);
   const metrics = useMemo(
     () => getDashboardMetrics(visiblePayments),
     [visiblePayments],
@@ -290,7 +290,7 @@ export default function SupabaseApp() {
         count: 0,
       };
 
-      current.amount += payment.amountBRL;
+                {isAdmin ? 'Painel administrativo' : 'Painel financeiro'}
       current.sessions += payment.sessions;
       current.count += 1;
       summaryMap.set(payment.userId, current);
